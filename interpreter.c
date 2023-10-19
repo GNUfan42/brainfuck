@@ -8,11 +8,11 @@
 const char *demo=
 #include "demo.h"
 ;
-#define T char
+//#define T char
 typedef T type_t;
 //Please use type_t to handle with values relates to VM,
 //and use size_t to handle values relates to host.
-const size_t size=64*1024;
+#define SIZE 64*1024
 struct Register{
 	const char *rom;
 	size_t pc;//Program Counter
@@ -20,7 +20,7 @@ struct Register{
 	type_t *ram;
 	size_t size;
 	char *err_msg;
-};
+};//ram MUST be initialized to 0!
 void match_bracket(struct Register *r, char mode){
 	size_t i=r->pc;
 	size_t count=0;
@@ -45,7 +45,7 @@ void match_bracket(struct Register *r, char mode){
 			break;
 	}
 	if(!count){
-		r->pc=i;
+		r->pc=i+1;
 	}else{
 		r->err_msg="Could not find the respective bracket.";
 	}
@@ -76,7 +76,7 @@ ret:	return p;
 
 enum State {HALTED, USE_INTERNAL, LOAD_FILE, INIT, RUNNING, ERROR}
 main(enum State s, char **argv){
-	type_t memory[size];
+	type_t memory[SIZE]={0};
 	struct Register r;
 	size_t unmap_info=0;
 	while(s){
@@ -99,7 +99,7 @@ main(enum State s, char **argv){
 				r.pc=0;
 				r.dp=0;
 				r.ram=memory;
-				r.size=size;
+				r.size=SIZE;
 				r.err_msg=NULL;
 				if(s==INIT){
 					s=RUNNING;
@@ -151,7 +151,7 @@ main(enum State s, char **argv){
 				s=ERROR;
 			case ERROR:
 				fprintf(stderr, "Error: %s\n", r.err_msg);
-				fprintf(stderr, "pc: %x\ndp: %x\nmem_size: %x\n", r.pc, r.dp, r.size);
+				fprintf(stderr, "pc: %p\ndp: %p\nmem_size: %p\n", r.pc, r.dp, r.size);
 				s=HALTED;
 				break;
 		}
@@ -163,7 +163,7 @@ main(enum State s, char **argv){
 	return s;
 }
 /*TODO:
-1. Add boundary checks			OK
-2. Add unimpleneted routines		OK
-3. Use mmap for memory allocation	--
+1. Add boundary checks				OK
+2. Add unimpleneted routines			OK
+3. Use mmap for flexible memory allocation	--
 */
