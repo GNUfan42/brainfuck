@@ -57,13 +57,19 @@ size_t filesize(int fd){
 	}
 	return statbuf.st_size;
 }
-char *map_file(char *filename){
+char *map_file(char *filename, size_t *unmap_info){
 	int fd;
 	void *p=NULL;
+	size_t size;
 	if((fd=open(filename, O_RDONLY))<0){
 		goto ret;
 	}
-	p=mmap(NULL, filesize(fd), PROT_READ, MAP_PRIVATE, fd, 0);
+	size=filesize(fd);
+	if(p=mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0)){
+		if(unmap_info){
+			*unmap_info=size;
+		}
+	}
 	close(fd);
 ret:	return p;
 }
@@ -72,6 +78,7 @@ enum State {HALTED, USE_INTERNAL, LOAD_FILE, INIT, RUNNING, ERROR}
 main(enum State s, char **argv){
 	type_t memory[size];
 	struct Register r;
+	size_t unmap_info=0;
 	while(s){
 		switch(s){
 			case USE_INTERNAL:
@@ -84,7 +91,7 @@ main(enum State s, char **argv){
 					snprintf(r.err_msg, r.size*sizeof(type_t)/sizeof(char), "Could not map the file %s: errno: %d.", argv[1], errno);
 					s=ERROR;
 					break;
-				}else if(r.rom=map_file(argv[1])){
+				}else if(r.rom=map_file(argv[1], &unmap_info)){
 					s=INIT;
 					break;
 				}//This fallthrough is necessary
@@ -150,6 +157,9 @@ main(enum State s, char **argv){
 		}
 	}
 	//Remember to cleanup here
+	if(!unmap_info){
+		munmap(r.rom, unmap_info);
+	}
 	return s;
 }
 /*TODO:
