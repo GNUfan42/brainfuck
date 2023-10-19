@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 const char *demo=
 #include "demo.h"
 ;
@@ -47,8 +50,22 @@ void match_bracket(struct Register *r, char mode){
 		r->err_msg="Could not find the respective bracket.";
 	}
 }
+size_t filesize(int fd){
+	struct stat statbuf;
+	if(fstat(fd, &statbuf)==-1){
+		return SIZE_MAX;
+	}
+	return statbuf.st_size;
+}
 char *map_file(char *filename){
-	return NULL;
+	int fd;
+	void *p=NULL;
+	if((fd=open(filename, O_RDONLY))<0){
+		goto ret;
+	}
+	p=mmap(NULL, filesize(fd), PROT_READ, MAP_PRIVATE, fd, 0);
+	close(fd);
+ret:	return p;
 }
 
 enum State {HALTED, USE_INTERNAL, LOAD_FILE, INIT, RUNNING, ERROR}
@@ -64,13 +81,13 @@ main(enum State s, char **argv){
 			case LOAD_FILE:
 				if(r.rom==0x1337){
 					r.err_msg=(char*)r.ram;
-					snprintf(r.err_msg, r.size, "Could not map the file %s: errno: %d.", argv[1], errno);
+					snprintf(r.err_msg, r.size*sizeof(type_t)/sizeof(char), "Could not map the file %s: errno: %d.", argv[1], errno);
 					s=ERROR;
 					break;
 				}else if(r.rom=map_file(argv[1])){
 					s=INIT;
 					break;
-				}
+				}//This fallthrough is necessary
 			case INIT:
 				r.pc=0;
 				r.dp=0;
@@ -127,7 +144,7 @@ main(enum State s, char **argv){
 				s=ERROR;
 			case ERROR:
 				fprintf(stderr, "Error: %s\n", r.err_msg);
-				fprintf(stderr, "pc: %x\ndp: %x\n, mem_size: %x\n", r.pc, r.dp, r.size);
+				fprintf(stderr, "pc: %x\ndp: %x\nmem_size: %x\n", r.pc, r.dp, r.size);
 				s=HALTED;
 				break;
 		}
@@ -137,6 +154,6 @@ main(enum State s, char **argv){
 }
 /*TODO:
 1. Add boundary checks			OK
-2. Add unimpleneted routines		--
+2. Add unimpleneted routines		OK
 3. Use mmap for memory allocation	--
 */
