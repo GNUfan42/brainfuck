@@ -139,7 +139,6 @@ main(enum State s, char **argv){
 						break;
 					case '\0':
 						s=HALTED;
-					default:
 				}
 				if(r.dp==-1||r.dp>=r.size){
 					r.err_msg="Memory access is out of bounds.";

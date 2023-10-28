@@ -1,0 +1,3 @@
+[submodule "tests/os.bf"]
+	path = tests/os.bf
+	url = https://github.com/bf-enterprise-solutions/os.bf
